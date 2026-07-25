@@ -29,6 +29,11 @@ public static class GameData
     private static int[,] _result;
     public static int[,] Result => _result;
 
+    // Store each color's full solution: every cell belonging to that color, loaded from the map file.
+    private static Dictionary<int, List<Vector2Int>> _solutions = new Dictionary<int, List<Vector2Int>>();
+    public static Dictionary<int, List<Vector2Int>> Solutions => _solutions;
+
+    // Store each color's current progress: the cells connected so far by the player, in order.
     private static Dictionary<int, List<Vector2Int>> _paths = new Dictionary<int, List<Vector2Int>>();
     public static Dictionary<int, List<Vector2Int>> Paths => _paths;
 
@@ -63,7 +68,7 @@ public static class GameData
             }
         }
 
-        // Fetch the paths from loaded data: group cells by color, each group is one path.
+        // Fetch the solutions from loaded data: group cells by color, each group is one color's solution.
         // A cell is a dot/tip of a path if it has at most 1 orthogonal neighbor sharing its color.
         for (int x = 0; x < cols; x++)
         {
@@ -72,16 +77,16 @@ public static class GameData
                 int color = _result[x, y];
                 if (color <= 0) continue;
 
-                if (!_paths.TryGetValue(color, out List<Vector2Int> cells))
+                if (!_solutions.TryGetValue(color, out List<Vector2Int> cells))
                 {
                     cells = new List<Vector2Int>();
-                    _paths[color] = cells;
+                    _solutions[color] = cells;
                 }
                 cells.Add(new Vector2Int(x, y));
             }
         }
 
-        foreach (KeyValuePair<int, List<Vector2Int>> pair in _paths)
+        foreach (KeyValuePair<int, List<Vector2Int>> pair in _solutions)
         {
             int color = pair.Key;
             List<Vector2Int> cells = pair.Value;
@@ -104,6 +109,9 @@ public static class GameData
                 _dotsData[tip.x, tip.y] = color;
                 _playerFillData[tip.x, tip.y] = color;
             }
+
+            // No progress made by the player yet for this color.
+            _paths[color] = new List<Vector2Int>();
         }
 
         return _result != null;
@@ -126,6 +134,7 @@ public static class GameData
         _playerFillData = null;
         _dotsData = null;
         _result = null;
+        _solutions.Clear();
         _paths.Clear();
     }
 
