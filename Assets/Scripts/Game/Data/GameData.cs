@@ -37,6 +37,9 @@ public static class GameData
     private static Dictionary<int, List<Vector2Int>> _paths = new Dictionary<int, List<Vector2Int>>();
     public static Dictionary<int, List<Vector2Int>> Paths => _paths;
 
+    public static int Cols => _result?.GetLength(0) ?? 0;
+    public static int Rows => _result?.GetLength(1) ?? 0;
+
     public static bool InitializedMap(int level)
     {
         ClearMap();
@@ -138,10 +141,144 @@ public static class GameData
         _paths.Clear();
     }
 
+    // Begin (or grab) a path at the given cell. Returns the color being drawn, or 0 if the cell is not a valid start.
+    public static int StartPathAt(Vector2Int cell)
+    {
+        if (_playerFillData == null || !InBounds(cell)) return 0;
+
+        int dotColor = _dotsData[cell.x, cell.y];
+        if (dotColor != 0)
+        {
+            ResetPath(dotColor);
+            _paths[dotColor].Add(cell);
+            return dotColor;
+        }
+
+        int fill = _playerFillData[cell.x, cell.y];
+        if (fill != 0 && _paths.TryGetValue(fill, out List<Vector2Int> path))
+        {
+            int idx = path.IndexOf(cell);
+            if (idx >= 0)
+            {
+                TrimPathAfter(fill, idx);
+                return fill;
+            }
+        }
+        return 0;
+    }
+
+    // Try to grow/shrink the active color's path into an adjacent cell. Returns true if the path changed.
+    public static bool TryExtend(int color, Vector2Int cell)
+    {
+        if (_playerFillData == null || !InBounds(cell)) return false;
+        if (!_paths.TryGetValue(color, out List<Vector2Int> path) || path.Count == 0) return false;
+
+        Vector2Int head = path[path.Count - 1];
+        if (cell == head || !IsAdjacent(head, cell)) return false;
+
+        int idx = path.IndexOf(cell);
+        if (idx >= 0)
+        {
+            TrimPathAfter(color, idx);
+            return true;
+        }
+
+        // Once the head sits on the terminal dot the path is finished and can only be shortened.
+        if (path.Count > 1 && _dotsData[head.x, head.y] != 0) return false;
+
+        int dot = _dotsData[cell.x, cell.y];
+        if (dot != 0)
+        {
+            if (dot != color) return false;
+            AppendCell(color, cell);
+            return true;
+        }
+
+        int occupant = _playerFillData[cell.x, cell.y];
+        if (occupant != 0 && occupant != color && _paths.TryGetValue(occupant, out List<Vector2Int> other))
+        {
+            int oi = other.IndexOf(cell);
+            if (oi >= 1) TrimPathAfter(occupant, oi - 1);
+        }
+
+        AppendCell(color, cell);
+        return true;
+    }
+
+    public static Vector2Int PathHead(int color)
+    {
+        if (_paths.TryGetValue(color, out List<Vector2Int> path) && path.Count > 0)
+        {
+            return path[path.Count - 1];
+        }
+        return new Vector2Int(-1, -1);
+    }
+
+    private static void AppendCell(int color, Vector2Int cell)
+    {
+        _playerFillData[cell.x, cell.y] = color;
+        _paths[color].Add(cell);
+    }
+
+    private static void ResetPath(int color)
+    {
+        if (_paths.TryGetValue(color, out List<Vector2Int> path))
+        {
+            foreach (Vector2Int cell in path)
+            {
+                if (_dotsData[cell.x, cell.y] == 0) _playerFillData[cell.x, cell.y] = 0;
+            }
+            path.Clear();
+        }
+        else
+        {
+            _paths[color] = new List<Vector2Int>();
+        }
+    }
+
+    // Remove every cell after index keepIdx, clearing fill for non-dot cells.
+    private static void TrimPathAfter(int color, int keepIdx)
+    {
+        List<Vector2Int> path = _paths[color];
+        for (int i = path.Count - 1; i > keepIdx; i--)
+        {
+            Vector2Int cell = path[i];
+            if (_dotsData[cell.x, cell.y] == 0) _playerFillData[cell.x, cell.y] = 0;
+            path.RemoveAt(i);
+        }
+    }
+
+    private static bool InBounds(Vector2Int cell)
+    {
+        return cell.x >= 0 && cell.x < Cols && cell.y >= 0 && cell.y < Rows;
+    }
+
+    private static bool IsAdjacent(Vector2Int a, Vector2Int b)
+    {
+        return Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y) == 1;
+    }
+
     public static bool IsWin()
     {
-        // TODO:
-        // Player is win if all dots are connected
-        return false;
+        if (_playerFillData == null) return false;
+
+        for (int x = 0; x < Cols; x++)
+        {
+            for (int y = 0; y < Rows; y++)
+            {
+                if (_playerFillData[x, y] == 0) return false;
+            }
+        }
+
+        foreach (int color in _solutions.Keys)
+        {
+            if (!_paths.TryGetValue(color, out List<Vector2Int> path) || path.Count < 2) return false;
+
+            Vector2Int a = path[0];
+            Vector2Int b = path[path.Count - 1];
+            if (a == b) return false;
+            if (_dotsData[a.x, a.y] != color || _dotsData[b.x, b.y] != color) return false;
+        }
+        return true;
     }
 }
