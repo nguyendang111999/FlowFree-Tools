@@ -1,0 +1,11 @@
+batchId=20260813_113242
+createdUtc=2026-08-13T04:32:42.3471593Z
+width=10
+height=10
+colors=10
+maps=5
+minLength=2
+maxLength=50
+seed=0
+perSolveTimeoutMs=3000
+resetSolverPerMap=True

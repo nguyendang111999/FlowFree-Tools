@@ -40,13 +40,13 @@ public static class GameData
     public static int Cols => _result?.GetLength(0) ?? 0;
     public static int Rows => _result?.GetLength(1) ?? 0;
 
-    public static bool InitializedMap(int level)
+    public static bool InitializedMap(int level, string path = "Maps")
     {
         ClearMap();
         CurrentLevel = level;
 
         // Load data from Resources/Maps
-        TextAsset mapAsset = Resources.Load<TextAsset>($"Maps/{level}");
+        TextAsset mapAsset = Resources.Load<TextAsset>($"{path}/{level}");
         if (mapAsset == null)
         {
             return false;

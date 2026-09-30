@@ -7,7 +7,6 @@ public class GameView : MonoBehaviour
     [SerializeField] private Camera _camera;
     [SerializeField] private float _cellSize = 1f;
     [SerializeField] private float _cameraPadding = 1f;
-    [SerializeField] private int _startLevel = 1;
     [SerializeField] private float _autoAdvanceDelay = 0.75f;
 
     // Colors indexed by (colorId - 1). Extra ids fall back to a generated hue.
@@ -17,6 +16,10 @@ public class GameView : MonoBehaviour
         Color.red, Color.blue, Color.green, Color.yellow, Color.magenta,
         Color.cyan, new Color(1f, 0.5f, 0f), new Color(0.6f, 0.3f, 0.1f)
     };
+
+    [Header("Level")]
+    [SerializeField] private string _path = "Maps";
+    [SerializeField] private int _levelToLoad = 1;
 
     private Cell[,] _cells;
     private int _cols;
@@ -30,14 +33,20 @@ public class GameView : MonoBehaviour
     private void Start()
     {
         if (_camera == null) _camera = Camera.main;
-        DisplayMap(_startLevel);
+        DisplayMap(_levelToLoad);
+    }
+
+    // Loads whatever level/path is currently set in the Inspector; used by the custom editor button.
+    public bool DisplayLoadedLevel()
+    {
+        return DisplayMap(_levelToLoad);
     }
 
     public bool DisplayMap(int level)
     {
-        if (!GameData.InitializedMap(level))
+        if (!GameData.InitializedMap(level, _path))
         {
-            Debug.LogWarning($"[GameView] Failed to load level {level}. Check Resources/Maps/{level}.csv.");
+            Debug.LogWarning($"[GameView] Failed to load level {level}. Check Resources/{_path}/{level}.csv.");
             return false;
         }
 
@@ -190,7 +199,7 @@ public class GameView : MonoBehaviour
     private void OnWin()
     {
         Debug.Log($"[GameView] Level {GameData.CurrentLevel} solved!");
-        Invoke(nameof(AdvanceLevel), _autoAdvanceDelay);
+        // Invoke(nameof(AdvanceLevel), _autoAdvanceDelay);
     }
 
     private void AdvanceLevel()
